@@ -24,7 +24,6 @@ pub fn dim(text: &str) -> ColoredString {
     text.dimmed()
 }
 
-// what the fuck is wrong with rust
 #[macro_export]
 macro_rules! pretext {
     ($cat:expr) => {{
@@ -44,55 +43,90 @@ macro_rules! pretext {
 
 #[macro_export]
 macro_rules! debug {
-    ($e:expr) => {
-        let text = $e.to_string();
-
+    ($($args:tt)*) => {
+        let text = format!($($args)*);
         let pre = pretext!("debug");
-
         println!("{} {}", pre, text);
     };
 }
 
 #[macro_export]
 macro_rules! info {
-    ($e:expr) => {
-        let text = $e.to_string();
-
+    ($($args:tt)*) => {
+        let text = format!($($args)*);
         let pre = pretext!("info");
-
         println!("{} {}", pre, text);
     };
 }
 
 #[macro_export]
 macro_rules! warn {
-    ($e:expr) => {
-        let text = $e.to_string();
-
+    ($($args:tt)*) => {
+        let text = format!($($args)*);
         let pre = pretext!("warn");
-
         println!("{} {}", pre, text);
     };
 }
 
 #[macro_export]
 macro_rules! error {
-    ($e:expr) => {
-        let text = $e.to_string();
-
+    ($($args:tt)*) => {
+        let text = format!($($args)*);
         let pre = pretext!("error");
-
         println!("{} {}", pre, text);
     };
 }
 
 #[macro_export]
 macro_rules! critical {
-    ($e:expr) => {
-        let text = $e.to_string();
-
+    ($($args:tt)*) => {
+        let text = format!($($args)*);
         let pre = pretext!("critical");
-
         println!("{} {}", pre, text);
+    };
+}
+
+#[macro_export]
+macro_rules! sdebug {
+    ($($args:tt)*) => {
+        let text = format!($($args)*);
+        let cat = log::cl::category("debug");
+        println!("{} {}", cat, text);
+    };
+}
+
+#[macro_export]
+macro_rules! sinfo {
+    ($($args:tt)*) => {
+        let text = format!($($args)*);
+        let cat = log::cl::category("info");
+        println!("{} {}", cat, text);
+    };
+}
+
+#[macro_export]
+macro_rules! swarn {
+    ($($args:tt)*) => {
+        let text = format!($($args)*);
+        let cat = log::cl::category("warn");
+        println!("{} {}", cat, text);
+    };
+}
+
+#[macro_export]
+macro_rules! serror {
+    ($($args:tt)*) => {
+        let text = format!($($args)*);
+        let cat = log::cl::category("error");
+        println!("{} {}", cat, text);
+    };
+}
+
+#[macro_export]
+macro_rules! scritical {
+    ($($args:tt)*) => {
+        let text = format!($($args)*);
+        let cat = log::cl::category("critical");
+        println!("{} {}", cat, text);
     };
 }
