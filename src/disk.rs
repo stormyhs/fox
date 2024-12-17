@@ -1,10 +1,9 @@
 //! File system operations, without the hassle.
 
-use crate::{scritical, swarn};
-use crate::log;
+use crate::{critical, warn, pretext};
 use crate as fox;
 
-/// Returns the content of a file as a string, or crashes with a `scritical!` on failure.
+/// Returns the content of a file as a string, or crashes with a `critical!` on failure.
 /// Useful for cases where a file must exist and be readable, or the program should not continue.
 ///
 /// Requires valid UTF-8 content.
@@ -16,19 +15,19 @@ pub fn read_file(file_path: &str) -> String {
         Err(e) => {
             match e.kind() {
                 std::io::ErrorKind::NotFound => {
-                    scritical!("File `{}` not found.", file_path);
+                    critical!("File `{}` not found.", file_path);
                 }
                 std::io::ErrorKind::PermissionDenied => {
-                    scritical!("Not permitted to read file `{}`.", file_path);
+                    critical!("Not permitted to read file `{}`.", file_path);
                 }
                 std::io::ErrorKind::InvalidData => {
-                    scritical!("File `{}` is not valid UTF-8.", file_path);
+                    critical!("File `{}` is not valid UTF-8.", file_path);
                 }
                 std::io::ErrorKind::IsADirectory => {
-                    scritical!("Cannot read `{}`, as it is a directory.", file_path);
+                    critical!("Cannot read `{}`, as it is a directory.", file_path);
                 }
                 _ => {
-                    scritical!("Failed to read file `{}`: {}", file_path, e);
+                    critical!("Failed to read file `{}`: {}", file_path, e);
                 }
             }
             std::process::exit(1);
@@ -36,7 +35,7 @@ pub fn read_file(file_path: &str) -> String {
     }
 }
 
-/// Writes the given content to a file, or crashes with a `scritical!` on failure.
+/// Writes the given content to a file, or crashes with a `critical!` on failure.
 /// Useful for cases where a file must be written to, or the program should not continue.
 ///
 /// Overwrites the file if it already exists.
@@ -46,13 +45,13 @@ pub fn write_file(file_path: &str, content: &str) {
         Err(e) => {
             match e.kind() {
                 std::io::ErrorKind::PermissionDenied => {
-                    scritical!("Not permitted to write to file `{}`.", file_path);
+                    critical!("Not permitted to write to file `{}`.", file_path);
                 }
                 std::io::ErrorKind::IsADirectory => {
-                    scritical!("Cannot write to `{}`, as it is a directory.", file_path);
+                    critical!("Cannot write to `{}`, as it is a directory.", file_path);
                 }
                 _ => {
-                    scritical!("Failed to write to file `{}`: {}", file_path, e);
+                    critical!("Failed to write to file `{}`: {}", file_path, e);
                 }
             }
             std::process::exit(1);
@@ -60,8 +59,8 @@ pub fn write_file(file_path: &str, content: &str) {
     }
 }
 
-/// Deletes the given file, or crashes with a `scritical!` on failure.
-/// Does not crash if the file does not exist, but does print a `swarn!`.
+/// Deletes the given file, or crashes with a `critical!` on failure.
+/// Does not crash if the file does not exist, but does print a `warn!`.
 ///
 /// Useful for cases where a file should be deleted, but it's not a problem if it doesn't exist.
 pub fn delete_file(file_path: &str) {
@@ -70,18 +69,159 @@ pub fn delete_file(file_path: &str) {
         Err(e) => {
             match e.kind() {
                 std::io::ErrorKind::NotFound => {
-                    swarn!("File `{}` not found for deletion.", file_path);
+                    warn!("File `{}` not found for deletion.", file_path);
                 }
                 std::io::ErrorKind::PermissionDenied => {
-                    scritical!("Not permitted to delete file `{}`.", file_path);
+                    critical!("Not permitted to delete file `{}`.", file_path);
                     std::process::exit(1);
                 }
                 std::io::ErrorKind::IsADirectory => {
-                    scritical!("Cannot delete `{}`, as it is a directory.", file_path);
+                    critical!("Cannot delete `{}`, as it is a directory.", file_path);
                     std::process::exit(1);
                 }
                 _ => {
-                    scritical!("Failed to delete file `{}`: {}", file_path, e);
+                    critical!("Failed to delete file `{}`: {}", file_path, e);
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
+}
+
+/// Reads the metadata of a file, or crashes with a `critical!` on failure.
+///
+/// Returns `std::fs::Metadata`.
+pub fn file_info(file_path: &str) -> Option<std::fs::Metadata> {
+    match std::fs::metadata(file_path) {
+        Ok(metadata) => {
+            Some(metadata)
+        }
+        Err(e) => {
+            match e.kind() {
+                std::io::ErrorKind::NotFound => {
+                    critical!("File `{}` not found.", file_path);
+                    std::process::exit(1);
+                }
+                std::io::ErrorKind::PermissionDenied => {
+                    critical!("Not permitted to read metadata of file `{}`.", file_path);
+                    std::process::exit(1);
+                }
+                _ => {
+                    critical!("Failed to read metadata of file `{}`: {}", file_path, e);
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
+}
+
+/// Reads the metadata of a file, or returns `None` if the file does not exist.
+///
+/// Returns `std::fs::Metadata` or `None`.
+pub fn file_info_or_none(file_path: &str) -> Option<std::fs::Metadata> {
+    match std::fs::metadata(file_path) {
+        Ok(metadata) => {
+            Some(metadata)
+        }
+        Err(e) => {
+            match e.kind() {
+                std::io::ErrorKind::NotFound => {
+                    None
+                }
+                std::io::ErrorKind::PermissionDenied => {
+                    critical!("Not permitted to read metadata of file `{}`.", file_path);
+                    std::process::exit(1);
+                }
+                _ => {
+                    critical!("Failed to read metadata of file `{}`: {}", file_path, e);
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
+}
+
+/// Lists the content of a directory, or crashes with a `critical!` on failure.
+pub fn list_dir(path: &str) -> Vec<String> {
+    match std::fs::read_dir(path) {
+        Ok(entries) => {
+            entries
+                .filter_map(|entry| {
+                    match entry {
+                        Ok(entry) => {
+                            match entry.file_name().into_string() {
+                                Ok(file_name) => {
+                                    Some(file_name)
+                                }
+                                Err(_) => {
+                                    warn!("Failed to read file name in directory `{}`.", path);
+                                    None
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            warn!("Failed to read directory `{}`: {}", path, e);
+                            None
+                        }
+                    }
+                })
+                .collect()
+        }
+        Err(e) => {
+            match e.kind() {
+                std::io::ErrorKind::NotFound => {
+                    critical!("Directory `{}` not found.", path);
+                }
+                std::io::ErrorKind::PermissionDenied => {
+                    critical!("Not permitted to read directory `{}`.", path);
+                }
+                _ => {
+                    critical!("Failed to read directory `{}`: {}", path, e);
+                }
+            }
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Lists the content of a directory, or returns an empty vector if it doesn't exist. Crashes with a `critical!` on failure.
+pub fn list_dir_or_empty(path: &str) -> Vec<String> {
+    match std::fs::read_dir(path) {
+        Ok(entries) => {
+            entries
+                .filter_map(|entry| {
+                    match entry {
+                        Ok(entry) => {
+                            match entry.file_name().into_string() {
+                                Ok(file_name) => {
+                                    Some(file_name)
+                                }
+                                Err(_) => {
+                                    warn!("Failed to read file name in directory `{}`.", path);
+                                    None
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            warn!("Failed to read directory `{}`: {}", path, e);
+                            None
+                        }
+                    }
+                })
+                .collect()
+        }
+        Err(e) => {
+            match e.kind() {
+                std::io::ErrorKind::NotFound => {
+                    warn!("Directory `{}` not found.", path);
+                    vec![]
+                }
+                std::io::ErrorKind::PermissionDenied => {
+                    critical!("Not permitted to read directory `{}`.", path);
+                    std::process::exit(1);
+                }
+                _ => {
+                    critical!("Failed to read directory `{}`: {}", path, e);
                     std::process::exit(1);
                 }
             }

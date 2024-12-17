@@ -53,8 +53,6 @@ pub fn set_logging_level(level: LogLevel) {
         LogLevel::Error => LEVEL.store(2, std::sync::atomic::Ordering::SeqCst),
         LogLevel::Critical => LEVEL.store(1, std::sync::atomic::Ordering::SeqCst),
     }
-
-    // LEVEL.store(level, std::sync::atomic::Ordering::SeqCst);
 }
 
 #[macro_export]
