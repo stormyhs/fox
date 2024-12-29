@@ -1,4 +1,4 @@
-# Fox~! Aaaaoooouuu!
+# 🦊 Fox~! Aaaaoooouuu!
 
 Fox is a collection of functionalities that make my time working with Rust a little nicer.
 
@@ -8,4 +8,3 @@ Fox is a collection of functionalities that make my time working with Rust a lit
 
 `disk` - Quick file system operation abstractions, to avoid repetetiveness in error handling, printing, etc.
 
-More to come!

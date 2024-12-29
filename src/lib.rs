@@ -5,4 +5,3 @@
 
 pub mod log;
 pub mod disk;
-pub mod net;
