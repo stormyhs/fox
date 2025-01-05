@@ -24,7 +24,6 @@ pub fn category(level: &str) -> ColoredString {
         _ => level.into()
     };
 
-
     format!("{}", level).into()
 }
 
