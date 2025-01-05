@@ -102,10 +102,34 @@ pub fn read_bytes(file_path: &str) -> Result<Vec<u8>, std::io::Error> {
     }
 }
 
-/// Writes the given content to a file.
+/// Writes the given string to a file.
 ///
 /// Overwrites the file if it already exists.
-pub fn write_file(file_path: &str, content: &str) -> Result<(), std::io::Error> {
+pub fn write_string(file_path: &str, content: &str) -> Result<(), std::io::Error> {
+    match std::fs::write(file_path, content) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            match e.kind() {
+                std::io::ErrorKind::PermissionDenied => {
+                    serror!("Not permitted to write to file `{}`.", file_path);
+                }
+                std::io::ErrorKind::IsADirectory => {
+                    serror!("Cannot write to `{}`, as it is a directory.", file_path);
+                }
+                _ => {
+                    serror!("Failed to write to file `{}`: {}", file_path, e);
+                }
+            }
+
+            Err(e)
+        }
+    }
+}
+
+/// Writes the given bytes to a file.
+///
+/// Overwrites the file if it already exists.
+pub fn write_bytes(file_path: &str, content: &[u8]) -> Result<(), std::io::Error> {
     match std::fs::write(file_path, content) {
         Ok(_) => Ok(()),
         Err(e) => {
