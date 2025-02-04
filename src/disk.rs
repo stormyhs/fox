@@ -6,43 +6,6 @@ use crate as fox;
 
 use colored::*;
 
-/// ### Deprecated - Use `read_string.unwrap()` for a drop-in replacement.
-///
-/// Returns the content of a file as a string, or crashes on failure.
-///
-/// Requires valid UTF-8 content.
-pub fn read_file(file_path: &str) -> String {
-    // For the 1 person depending on fox :)
-    let msg = format!("fox::disk::{} is deprecated. Use fox::disk::{} instead.", "read_file".yellow(), "read_string".cyan());
-    swarn!("{}", msg);
-
-    match std::fs::read_to_string(file_path) {
-        Ok(content) => {
-            content
-        }
-        Err(e) => {
-            match e.kind() {
-                std::io::ErrorKind::NotFound => {
-                    scritical!("File `{}` not found.", file_path);
-                }
-                std::io::ErrorKind::PermissionDenied => {
-                    scritical!("Not permitted to read file `{}`.", file_path);
-                }
-                std::io::ErrorKind::InvalidData => {
-                    scritical!("File `{}` is not valid UTF-8.", file_path);
-                }
-                std::io::ErrorKind::IsADirectory => {
-                    scritical!("Cannot read `{}`, as it is a directory.", file_path);
-                }
-                _ => {
-                    scritical!("Failed to read file `{}`: {}", file_path, e);
-                }
-            }
-            std::process::exit(1);
-        }
-    }
-}
-
 /// Returns the content of a file as a string.
 ///
 /// Requires valid UTF-8 content.
@@ -205,8 +168,14 @@ pub fn list_dir(path: &str) -> Result<Vec<String>, std::io::Error> {
             for entry in entries {
                 let entry = entry?;
                 let path = entry.path();
-                let path = path.to_str().unwrap().to_string();
-                files.push(path);
+                let path_str = path.to_str().unwrap().to_string().strip_prefix("./").unwrap().to_string();
+
+                if path.is_dir() {
+                    files.push(format!("{}/", path_str));
+                } else {
+                    files.push(path_str);
+                }
+
             }
 
             Ok(files)
@@ -238,10 +207,12 @@ pub fn list_dir_all(path: &str) -> Result<Vec<String>, std::io::Error> {
                     let entry = entry?;
                     let path = entry.path();
                     let path_str = path.to_str().unwrap().to_string();
-                    result.push(path_str.clone());
 
                     if path.is_dir() {
+                        result.push(format!("{}/", path_str.clone()));
                         read_dir_recursive(&path_str, result)?;
+                    } else {
+                        result.push(path_str.clone());
                     }
                 }
                 Ok(())
@@ -266,6 +237,10 @@ pub fn list_dir_all(path: &str) -> Result<Vec<String>, std::io::Error> {
 
     let mut files = Vec::new();
     read_dir_recursive(path, &mut files)?;
+
+    // Remove the `path` prefix from the paths.
+    let path_len = path.len();
+    files = files.iter().map(|f| f[path_len..].to_string()).collect();
 
     Ok(files)
 }
