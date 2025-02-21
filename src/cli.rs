@@ -51,16 +51,12 @@ impl ArgumentsParser {
         let combined: Vec<Parameter> = self.required.clone().into_iter().chain(self.optional).collect();
 
         for cli_arg in &cli_args {
-            sdebug!("Parsing {}", cli_arg);
             for param in &combined {
                 if *param.long != *cli_arg {
                     continue;
                 }
 
-                sdebug!("{}", i);
-
                 if param.has_value {
-                    sdebug!("{} must have value", param.long);
                     match cli_args.get(i + 1) {
                         Some(_) => {
                             args.push(Argument {
@@ -75,8 +71,6 @@ impl ArgumentsParser {
                             else {
                                 found_args.push(cli_args[i].clone());
                             }
-
-                            sdebug!("inc (value read)");
                         },
                         None => {
                             scritical!("No value provided for argument `{}`", cli_args[i]);
@@ -100,7 +94,6 @@ impl ArgumentsParser {
                 }
             }
 
-            sdebug!("inc (end loop)");
             i += 1
         }
 
