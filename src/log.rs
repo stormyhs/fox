@@ -73,120 +73,120 @@ macro_rules! pretext {
 
 #[macro_export]
 macro_rules! debug {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         let level = fox::log::LEVEL.load(std::sync::atomic::Ordering::Relaxed);
         if level >= 5 {
             let text = format!($($args)*);
-            let pre = pretext!("debug");
+            let pre = fox::pretext!("debug");
             println!("{} {}", pre, text);
         }
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! info {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         let level = fox::log::LEVEL.load(std::sync::atomic::Ordering::Relaxed);
         if level >= 4 {
             let text = format!($($args)*);
-            let pre = pretext!("info");
+            let pre = fox::pretext!("info");
             println!("{} {}", pre, text);
         }
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! warn {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         let level = fox::log::LEVEL.load(std::sync::atomic::Ordering::Relaxed);
         if level >= 3 {
             let text = format!($($args)*);
-            let pre = pretext!("warn");
+            let pre = fox::pretext!("warn");
             println!("{} {}", pre, text);
         }
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! error {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         let level = fox::log::LEVEL.load(std::sync::atomic::Ordering::Relaxed);
         if level >= 2 {
             let text = format!($($args)*);
-            let pre = pretext!("error");
+            let pre = fox::pretext!("error");
             println!("{} {}", pre, text);
         }
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! critical {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         let level = fox::log::LEVEL.load(std::sync::atomic::Ordering::Relaxed);
         if level >= 1 {
             let text = format!($($args)*);
-            let pre = pretext!("critical");
+            let pre = fox::pretext!("critical");
             println!("{} {}", pre, text);
         }
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! sdebug {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         let level = fox::log::LEVEL.load(std::sync::atomic::Ordering::Relaxed);
         if level >= 5 {
             let text = format!($($args)*);
-            let cat = log::category("debug");
+            let cat = fox::log::category("debug");
             println!("{} {}", cat, text);
         }
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! sinfo {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         let level = fox::log::LEVEL.load(std::sync::atomic::Ordering::Relaxed);
         if level >= 4 {
             let text = format!($($args)*);
-            let cat = log::category("info");
+            let cat = fox::log::category("info");
             println!("{} {}", cat, text);
         }
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! swarn {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         let level = fox::log::LEVEL.load(std::sync::atomic::Ordering::Relaxed);
         if level >= 3 {
             let text = format!($($args)*);
-            let cat = log::category("warn");
+            let cat = fox::log::category("warn");
             println!("{} {}", cat, text);
         }
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! serror {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         let level = fox::log::LEVEL.load(std::sync::atomic::Ordering::Relaxed);
         if level >= 2 {
             let text = format!($($args)*);
-            let cat = log::category("error");
+            let cat = fox::log::category("error");
             println!("{} {}", cat, text);
         }
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! scritical {
-    ($($args:tt)*) => {
+    ($($args:tt)*) => {{
         let level = fox::log::LEVEL.load(std::sync::atomic::Ordering::Relaxed);
         if level >= 1 {
             let text = format!($($args)*);
-            let cat = log::category("critical");
+            let cat = fox::log::category("critical");
             println!("{} {}", cat, text);
         }
-    };
+    }};
 }

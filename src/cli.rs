@@ -2,7 +2,6 @@
 
 use crate::*;
 use crate as fox;
-use colored::*;
 
 #[derive(Clone)]
 struct Parameter {
