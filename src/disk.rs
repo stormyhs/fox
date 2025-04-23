@@ -1,10 +1,7 @@
 //! Quick file system operations, with pretty logging.
 
-use crate::{scritical, serror, swarn};
-use crate::log;
+use crate::serror;
 use crate as fox;
-
-use colored::*;
 
 /// Returns the content of a file as a string.
 ///
