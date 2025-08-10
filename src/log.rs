@@ -74,7 +74,21 @@ impl std::str::FromStr for LogLevel {
     }
 }
 
+// Add this function to check if text contains ANSI codes
+pub fn contains_ansi_codes(text: &str) -> bool {
+    static ANSI_RE: OnceLock<Regex> = OnceLock::new();
+    let ansi_re = ANSI_RE.get_or_init(|| {
+        Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]").unwrap()
+    });
+
+    ansi_re.is_match(text)
+}
+
 pub fn highlight_syntax(text: &str) -> String {
+    if contains_ansi_codes(text) {
+        return text.to_string();
+    }
+
     use std::collections::BTreeMap;
 
     let mut matches: BTreeMap<usize, (usize, String, u8)> = BTreeMap::new();
