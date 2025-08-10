@@ -163,11 +163,11 @@ fn is_inside_match(matches: &BTreeMap<usize, (usize, String, u8)>, start: usize,
 
 pub fn category(level: &str) -> ColoredString {
     match level {
-        "debug" => "DEBUG =>".bright_blue().bold(),
-        "info" => "INFO  =>".bright_green().bold(),
-        "warn" => "WARN  =>".bright_yellow().bold(),
-        "error" => "ERROR =>".bright_red().bold(),
-        "critical" => "CRIT  =>".bright_magenta().bold(),
+        "debug" => "DEBG =>".bright_blue().bold(),
+        "info" => "INFO =>".bright_green().bold(),
+        "warn" => "WARN =>".bright_yellow().bold(),
+        "error" => "EROR =>".bright_red().bold(),
+        "critical" => "CRIT =>".bright_magenta().bold(),
         _ => level.normal(),
     }
 }
