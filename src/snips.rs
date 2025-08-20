@@ -109,7 +109,7 @@ pub fn confirm<S: Into<String>>(message: S, default: bool) -> bool {
     let default_hint = if default { "[Y/n]" } else { "[y/N]" };
 
     loop {
-        print!("{} {} {} ", "INPUT =>".blue().bold(), message, default_hint);
+        print!("{} {} {} ", "INPT =>".blue().bold(), message, default_hint);
         io::stdout().flush().unwrap();
 
         let mut input = String::new();
@@ -146,7 +146,7 @@ pub fn select<S: AsRef<str>>(message: S, options: &[S]) -> Option<usize> {
     let message = message.as_ref();
 
     loop {
-        println!("{} {}", "INPUT =>".blue().bold(), message);
+        println!("{} {}", "INPT =>".blue().bold(), message);
         for (i, option) in options.iter().enumerate() {
             println!("  {}. {}", (i + 1).to_string().cyan(), option.as_ref());
         }
@@ -180,7 +180,7 @@ pub fn select_with_default<S: AsRef<str>>(message: S, options: &[S], default: us
     let message = message.as_ref();
 
     loop {
-        println!("{} {}", "INPUT =>".blue().bold(), message);
+        println!("{} {}", "INPT =>".blue().bold(), message);
         for (i, option) in options.iter().enumerate() {
             let prefix = if i == default {
                 format!("  {}. {} {}", (i + 1).to_string().cyan(), option.as_ref(), "(default)".dimmed())
