@@ -108,7 +108,6 @@ pub fn highlight_syntax(text: &str) -> String {
     }
 
     let cache = get_regex_cache();
-
     let mut matches: BTreeMap<usize, (usize, String, u8)> = BTreeMap::new();
 
     // Priority 1: Strings (highest priority to avoid false matches inside strings)
@@ -180,23 +179,21 @@ fn is_inside_match(matches: &BTreeMap<usize, (usize, String, u8)>, start: usize,
     false
 }
 
-static CATEGORY_DEBUG: OnceLock<ColoredString> = OnceLock::new();
-static CATEGORY_INFO: OnceLock<ColoredString> = OnceLock::new();
-static CATEGORY_WARN: OnceLock<ColoredString> = OnceLock::new();
-static CATEGORY_ERROR: OnceLock<ColoredString> = OnceLock::new();
-static CATEGORY_CRITICAL: OnceLock<ColoredString> = OnceLock::new();
+// Pre-computed colored strings for categories as ANSI escape codes
+static CATEGORY_DEBUG: OnceLock<String> = OnceLock::new();
+static CATEGORY_INFO: OnceLock<String> = OnceLock::new();
+static CATEGORY_WARN: OnceLock<String> = OnceLock::new();
+static CATEGORY_ERROR: OnceLock<String> = OnceLock::new();
+static CATEGORY_CRITICAL: OnceLock<String> = OnceLock::new();
 
-pub fn category(level: &str) -> &'static ColoredString {
+pub fn category(level: &str) -> String {
     match level {
-        "debug" => CATEGORY_DEBUG.get_or_init(|| "DEBG =>".bright_blue().bold()),
-        "info" => CATEGORY_INFO.get_or_init(|| "INFO =>".bright_green().bold()),
-        "warn" => CATEGORY_WARN.get_or_init(|| "WARN =>".bright_yellow().bold()),
-        "error" => CATEGORY_ERROR.get_or_init(|| "EROR =>".bright_red().bold()),
-        "critical" => CATEGORY_CRITICAL.get_or_init(|| "CRIT =>".bright_magenta().bold()),
-        _ => {
-            static FALLBACK: OnceLock<ColoredString> = OnceLock::new();
-            FALLBACK.get_or_init(|| level.normal())
-        }
+        "debug" => CATEGORY_DEBUG.get_or_init(|| "DEBG =>".bright_blue().bold().to_string()).clone(),
+        "info" => CATEGORY_INFO.get_or_init(|| "INFO =>".bright_green().bold().to_string()).clone(),
+        "warn" => CATEGORY_WARN.get_or_init(|| "WARN =>".bright_yellow().bold().to_string()).clone(),
+        "error" => CATEGORY_ERROR.get_or_init(|| "EROR =>".bright_red().bold().to_string()).clone(),
+        "critical" => CATEGORY_CRITICAL.get_or_init(|| "CRIT =>".bright_magenta().bold().to_string()).clone(),
+        _ => level.normal().to_string(),
     }
 }
 
@@ -290,7 +287,7 @@ macro_rules! log_impl {
         let current_level = fox::log::LEVEL.load(std::sync::atomic::Ordering::Relaxed);
         if current_level >= $level_num {
             let text = format!($($args)*);
-            let highlighted_text = if text.len() > 1000 || !fox::log::contains_ansi_codes(&text) {
+            let highlighted_text = if text.len() > 1000 {
                 text
             } else {
                 fox::log::highlight_syntax(&text)
@@ -307,7 +304,7 @@ macro_rules! slog_impl {
         let current_level = fox::log::LEVEL.load(std::sync::atomic::Ordering::Relaxed);
         if current_level >= $level_num {
             let text = format!($($args)*);
-            let highlighted_text = if text.len() > 1000 || !fox::log::contains_ansi_codes(&text) {
+            let highlighted_text = if text.len() > 1000 {
                 text
             } else {
                 fox::log::highlight_syntax(&text)
