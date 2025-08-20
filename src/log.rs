@@ -1,4 +1,4 @@
-//! Pretty logging.
+//! Pretty logging with performance optimizations.
 //!
 //! ```rs
 //! use fox::*;
@@ -74,86 +74,105 @@ impl std::str::FromStr for LogLevel {
     }
 }
 
-// Add this function to check if text contains ANSI codes
-pub fn contains_ansi_codes(text: &str) -> bool {
-    static ANSI_RE: OnceLock<Regex> = OnceLock::new();
-    let ansi_re = ANSI_RE.get_or_init(|| {
-        Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]").unwrap()
-    });
+// Compiled regex patterns cached globally
+struct RegexCache {
+    ansi: Regex,
+    string: Regex,
+    number: Regex,
+    boolean: Regex,
+    key: Regex,
+    bracket: Regex,
+}
 
-    ansi_re.is_match(text)
+static REGEX_CACHE: OnceLock<RegexCache> = OnceLock::new();
+
+fn get_regex_cache() -> &'static RegexCache {
+    REGEX_CACHE.get_or_init(|| RegexCache {
+        ansi: Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]").unwrap(),
+        string: Regex::new(r#"("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*')"#).unwrap(),
+        number: Regex::new(r"\b\d+\.?\d*\b").unwrap(),
+        boolean: Regex::new(r"\b(true|false|null|undefined|None|nil)\b").unwrap(),
+        key: Regex::new(r"\b(\w+):").unwrap(),
+        bracket: Regex::new(r"[\[\]{}()]").unwrap(),
+    })
+}
+
+pub fn contains_ansi_codes(text: &str) -> bool {
+    let cache = get_regex_cache();
+    cache.ansi.is_match(text)
 }
 
 pub fn highlight_syntax(text: &str) -> String {
-    if contains_ansi_codes(text) {
+    if text.is_empty() || contains_ansi_codes(text) {
         return text.to_string();
     }
 
-    use std::collections::BTreeMap;
+    let cache = get_regex_cache();
 
     let mut matches: BTreeMap<usize, (usize, String, u8)> = BTreeMap::new();
 
-    let string_re = Regex::new(r#"("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*')"#).unwrap();
-    for mat in string_re.find_iter(text) {
-        let colored = format!("\x1b[92m{}\x1b[0m", mat.as_str()); // bright green
+    // Priority 1: Strings (highest priority to avoid false matches inside strings)
+    for mat in cache.string.find_iter(text) {
+        let colored = format!("\x1b[92m{}\x1b[0m", mat.as_str());
         matches.insert(mat.start(), (mat.end(), colored, 1));
     }
 
-    let number_re = Regex::new(r"\b\d+\.?\d*\b").unwrap();
-    for mat in number_re.find_iter(text) {
+    // Priority 2: Numbers
+    for mat in cache.number.find_iter(text) {
         if !is_inside_match(&matches, mat.start(), mat.end()) {
-            let colored = format!("\x1b[93m{}\x1b[0m", mat.as_str()); // bright yellow
+            let colored = format!("\x1b[93m{}\x1b[0m", mat.as_str());
             matches.insert(mat.start(), (mat.end(), colored, 2));
         }
     }
 
-    let bool_re = Regex::new(r"\b(true|false|null|undefined|None|nil)\b").unwrap();
-    for mat in bool_re.find_iter(text) {
+    // Priority 3: Booleans/null values
+    for mat in cache.boolean.find_iter(text) {
         if !is_inside_match(&matches, mat.start(), mat.end()) {
             let color = if matches!(mat.as_str(), "true" | "false") {
-                "\x1b[93;1m" // bright yellow + bold for booleans
+                "\x1b[93;1m"
             } else {
-                "\x1b[90m" // gray for null values
+                "\x1b[90m"
             };
             let colored = format!("{}{}\x1b[0m", color, mat.as_str());
             matches.insert(mat.start(), (mat.end(), colored, 3));
         }
     }
 
-    let key_re = Regex::new(r"\b(\w+):").unwrap();
-    for cap in key_re.captures_iter(text) {
+    // Priority 4: Keys
+    for cap in cache.key.captures_iter(text) {
         let mat = cap.get(0).unwrap();
         if !is_inside_match(&matches, mat.start(), mat.end()) {
             let key = cap.get(1).unwrap().as_str();
-            let colored = format!("\x1b[96m{}:\x1b[0m", key); // bright cyan
+            let colored = format!("\x1b[96m{}:\x1b[0m", key);
             matches.insert(mat.start(), (mat.end(), colored, 4));
         }
     }
 
-    let bracket_re = Regex::new(r"[\[\]{}()]").unwrap();
-    for mat in bracket_re.find_iter(text) {
+    // Priority 5: Brackets (lowest priority)
+    for mat in cache.bracket.find_iter(text) {
         if !is_inside_match(&matches, mat.start(), mat.end()) {
-            let colored = format!("\x1b[97m{}\x1b[0m", mat.as_str()); // bright white
+            let colored = format!("\x1b[97m{}\x1b[0m", mat.as_str());
             matches.insert(mat.start(), (mat.end(), colored, 5));
         }
     }
 
-    let mut result = String::new();
+    // Build result string with pre-allocated capacity
+    let mut result = String::with_capacity(text.len() + matches.len() * 20);
     let mut last_end = 0;
 
-    for (start, (end, replacement, _priority)) in matches {
+    for (start, (end, replacement, _)) in matches {
         result.push_str(&text[last_end..start]);
         result.push_str(&replacement);
         last_end = end;
     }
 
     result.push_str(&text[last_end..]);
-
     result
 }
 
+#[inline]
 fn is_inside_match(matches: &BTreeMap<usize, (usize, String, u8)>, start: usize, end: usize) -> bool {
-    for (match_start, (match_end, _, _)) in matches {
+    for (match_start, (match_end, _, _)) in matches.range(..=start) {
         if start < *match_end && end > *match_start {
             return true;
         }
@@ -161,32 +180,54 @@ fn is_inside_match(matches: &BTreeMap<usize, (usize, String, u8)>, start: usize,
     false
 }
 
-pub fn category(level: &str) -> ColoredString {
+static CATEGORY_DEBUG: OnceLock<ColoredString> = OnceLock::new();
+static CATEGORY_INFO: OnceLock<ColoredString> = OnceLock::new();
+static CATEGORY_WARN: OnceLock<ColoredString> = OnceLock::new();
+static CATEGORY_ERROR: OnceLock<ColoredString> = OnceLock::new();
+static CATEGORY_CRITICAL: OnceLock<ColoredString> = OnceLock::new();
+
+pub fn category(level: &str) -> &'static ColoredString {
     match level {
-        "debug" => "DEBG =>".bright_blue().bold(),
-        "info" => "INFO =>".bright_green().bold(),
-        "warn" => "WARN =>".bright_yellow().bold(),
-        "error" => "EROR =>".bright_red().bold(),
-        "critical" => "CRIT =>".bright_magenta().bold(),
-        _ => level.normal(),
+        "debug" => CATEGORY_DEBUG.get_or_init(|| "DEBG =>".bright_blue().bold()),
+        "info" => CATEGORY_INFO.get_or_init(|| "INFO =>".bright_green().bold()),
+        "warn" => CATEGORY_WARN.get_or_init(|| "WARN =>".bright_yellow().bold()),
+        "error" => CATEGORY_ERROR.get_or_init(|| "EROR =>".bright_red().bold()),
+        "critical" => CATEGORY_CRITICAL.get_or_init(|| "CRIT =>".bright_magenta().bold()),
+        _ => {
+            static FALLBACK: OnceLock<ColoredString> = OnceLock::new();
+            FALLBACK.get_or_init(|| level.normal())
+        }
     }
 }
 
-pub fn time() -> ColoredString {
-    let time = chrono::Local::now();
-    let time = time.format("%H:%M:%S").to_string();
-    time.bright_black().bold()
+thread_local! {
+    static TIME_BUFFER: std::cell::RefCell<String> = std::cell::RefCell::new(String::with_capacity(8));
 }
 
-pub fn dim(text: &str) -> ColoredString {
-    text.dimmed()
+pub fn time() -> String {
+    TIME_BUFFER.with(|buf| {
+        let mut buffer = buf.borrow_mut();
+        buffer.clear();
+
+        let now = chrono::Local::now();
+        use std::fmt::Write;
+        write!(buffer, "{}", now.format("%H:%M:%S")).unwrap();
+
+        format!("\x1b[90;1m{}\x1b[0m", buffer)
+    })
 }
 
+pub fn dim(text: &str) -> String {
+    format!("\x1b[2m{}\x1b[0m", text)
+}
+
+#[inline]
 pub fn get_logging_level() -> LogLevel {
     let level = LEVEL.load(Ordering::Relaxed);
     LogLevel::from_u8(level).unwrap_or(LogLevel::Info)
 }
 
+#[inline]
 pub fn set_logging_level(level: LogLevel) {
     LEVEL.store(level.as_u8(), Ordering::SeqCst);
 }
@@ -203,30 +244,41 @@ pub fn set_logging_level_from_env() {
     }
 }
 
+#[inline]
 pub fn should_log(level: LogLevel) -> bool {
     let current_level = LEVEL.load(Ordering::Relaxed);
     level.as_u8() <= current_level
+}
+
+thread_local! {
+    static CALLER_BUFFER: std::cell::RefCell<String> = std::cell::RefCell::new(String::with_capacity(32));
 }
 
 pub fn get_caller_info() -> String {
     let caller = std::panic::Location::caller();
     let file = caller.file();
 
-    let short_file = file
-        .split('/')
-        .last()
-        .or_else(|| file.split('\\').last())
-        .unwrap_or(file);
+    CALLER_BUFFER.with(|buf| {
+        let mut buffer = buf.borrow_mut();
+        buffer.clear();
 
-    let line = caller.line();
-    format!("{}:{}", short_file, line)
+        let short_file = file
+            .split('/')
+            .last()
+            .or_else(|| file.split('\\').last())
+            .unwrap_or(file);
+
+        use std::fmt::Write;
+        write!(buffer, "{}:{}", short_file, caller.line()).unwrap();
+        buffer.clone()
+    })
 }
 
 #[macro_export]
 macro_rules! pretext {
     ($cat:expr) => {{
         let cat = fox::log::category($cat);
-        let time = fox::log::dim(&fox::log::time().to_string());
+        let time = fox::log::time();
         let caller = fox::log::dim(&fox::log::get_caller_info());
         format!("{} {} {}", cat, time, caller)
     }};
@@ -238,7 +290,11 @@ macro_rules! log_impl {
         let current_level = fox::log::LEVEL.load(std::sync::atomic::Ordering::Relaxed);
         if current_level >= $level_num {
             let text = format!($($args)*);
-            let highlighted_text = fox::log::highlight_syntax(&text);
+            let highlighted_text = if text.len() > 1000 || !fox::log::contains_ansi_codes(&text) {
+                text
+            } else {
+                fox::log::highlight_syntax(&text)
+            };
             let pre = fox::pretext!($level);
             println!("{} {}", pre, highlighted_text);
         }
@@ -251,7 +307,11 @@ macro_rules! slog_impl {
         let current_level = fox::log::LEVEL.load(std::sync::atomic::Ordering::Relaxed);
         if current_level >= $level_num {
             let text = format!($($args)*);
-            let highlighted_text = fox::log::highlight_syntax(&text);
+            let highlighted_text = if text.len() > 1000 || !fox::log::contains_ansi_codes(&text) {
+                text
+            } else {
+                fox::log::highlight_syntax(&text)
+            };
             let cat = fox::log::category($level);
             println!("{} {}", cat, highlighted_text);
         }
@@ -327,4 +387,3 @@ macro_rules! scritical {
         fox::slog_impl!("critical", 1, $($args)*)
     };
 }
-

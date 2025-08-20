@@ -2,5 +2,7 @@
 
 pub mod log;
 pub mod disk;
-pub mod cli;
 pub mod snips;
+
+#[deprecated = "use clap instead"]
+pub mod cli;
